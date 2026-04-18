@@ -15,10 +15,10 @@
 
         <main>
             <div class="upload-zone" id="drop-zone">
-                <input type="file" id="file-input" class="file-input" accept=".txt,.csv,.jpg,.png,.mp3,.wav,.mp4">
+                <input type="file" id="file-input" class="file-input" accept=".txt,.csv,.jpg,.png,.mp3,.wav,.mp4,.gz">
                 <label for="file-input" class="upload-label">
                     <span id="file-name">Click or drag file here</span>
-                    <span class="file-types">Supported: TXT, CSV, JPG, PNG, MP3, WAV, MP4</span>
+                    <span class="file-types">Supported: TXT, CSV, JPG, PNG, MP3, WAV, MP4, GZ</span>
                 </label>
             </div>
 
@@ -58,6 +58,7 @@
         </main>
     </div>
     
+    <script src="lib/pako.min.js"></script>
     <script src="lib/lamejs.min.js"></script>
     
     <script src="scripts/ui/dom-handler.js" type="module"></script>
