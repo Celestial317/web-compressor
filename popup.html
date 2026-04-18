@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MACS File Compressor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080c14;
+      --surface:   rgba(255,255,255,0.04);
+      --border:    rgba(255,255,255,0.08);
+      --accent:    #00e5ff;
+      --accent2:   #7b61ff;
+      --green:     #00ffb2;
+      --warn:      #ff6b6b;
+      --text:      #e8eaf0;
+      --muted:     rgba(232,234,240,0.45);
+      --glow:      0 0 24px rgba(0,229,255,0.18);
+    }
+
+    body {
+      width: 380px;
+      min-height: 520px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    /* ── Background mesh ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 10% 10%, rgba(0,229,255,0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 50% at 90% 80%, rgba(123,97,255,0.07) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap { position: relative; z-index: 1; padding: 18px 16px 20px; }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      animation: fadeDown 0.4s ease both;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      box-shadow: var(--glow);
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: -0.3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .version {
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+
+    /* ── Mode toggle ── */
+    .mode-toggle {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 3px;
+      margin-bottom: 14px;
+      animation: fadeDown 0.4s 0.05s ease both;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 6px 0;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(123,97,255,0.15));
+      color: var(--accent);
+      border: 1px solid rgba(0,229,255,0.25);
+    }
+
+    /* ── Drop zone ── */
+    .dropzone {
+      border: 1.5px dashed var(--border);
+      border-radius: 12px;
+      padding: 22px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s;
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 14px;
+      animation: fadeDown 0.4s 0.1s ease both;
+    }
+
+    .dropzone::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(0,229,255,0.04), rgba(123,97,255,0.04));
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: var(--accent);
+      box-shadow: var(--glow);
+    }
+
+    .dropzone:hover::before, .dropzone.drag-over::before { opacity: 1; }
+
+    .drop-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+      display: block;
+      filter: drop-shadow(0 0 8px rgba(0,229,255,0.4));
+    }
+
+    .drop-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .drop-sub {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .drop-sub span {
+      color: var(--accent);
+    }
+
+    #fileInput { display: none; }
+
+    /* ── File pill ── */
+    .file-pill {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,229,255,0.07);
+      border: 1px solid rgba(0,229,255,0.2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+      animation: fadeIn 0.3s ease both;
+    }
+
+    .file-pill.show { display: flex; }
+
+    .file-pill-icon { font-size: 16px; flex-shrink: 0; }
+
+    .file-pill-info { flex: 1; min-width: 0; }
+
+    .file-pill-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 11px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-pill-size { font-size: 10px; color: var(--muted); }
+
+    .file-pill-clear {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px;
+      line-height: 1;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .file-pill-clear:hover { color: var(--warn); }
+
+    /* ── Quality slider (only for lossy image) ── */
+    .quality-row {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      animation: fadeIn 0.3s ease both;
+    }
+
+    .quality-row.show { display: flex; }
+
+    .quality-label {
+      font-size: 10px;
+      color: var(--muted);
+      white-space: nowrap;
+      width: 54px;
+      flex-shrink: 0;
+    }
+
+    .quality-label span {
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+    }
+
+    input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent) var(--pct, 75%), var(--border) var(--pct, 75%));
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 13px; height: 13px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(0,229,255,0.5);
+    }
+
+    /* ── CRF row (only for video) ── */
+    .crf-row {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .crf-row.show { display: flex; }
+
+    /* ── Compress button ── */
+    .btn-compress {
+      width: 100%;
+      padding: 11px;
+      border: none;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #000;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 12px;
+      letter-spacing: 0.8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 14px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeDown 0.4s 0.15s ease both;
+    }
+
+    .btn-compress:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-compress:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0,229,255,0.3);
+    }
+
+    .btn-compress:not(:disabled):active { transform: translateY(0); }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      display: none;
+      margin-bottom: 14px;
+      animation: fadeIn 0.3s ease both;
+    }
+
+    .progress-wrap.show { display: block; }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .progress-label #progressText { color: var(--accent); }
+
+    .progress-track {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* ── Status ── */
+    #status {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      min-height: 16px;
+      margin-bottom: 10px;
+      animation: fadeIn 0.3s ease both;
+    }
+
+    #status.error { color: var(--warn); }
+    #status.success { color: var(--green); }
+
+    /* ── Metrics grid ── */
+    .metrics {
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+      animation: fadeIn 0.4s ease both;
+    }
+
+    .metrics.show { display: grid; }
+
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 12px;
+      transition: border-color 0.2s;
+    }
+
+    .metric-card:hover { border-color: rgba(0,229,255,0.2); }
+
+    .metric-card.accent {
+      border-color: rgba(0,229,255,0.2);
+      background: rgba(0,229,255,0.05);
+    }
+
+    .metric-card.accent2 {
+      border-color: rgba(123,97,255,0.2);
+      background: rgba(123,97,255,0.05);
+    }
+
+    .metric-label {
+      font-size: 9px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 4px;
+    }
+
+    .metric-value {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .metric-card.accent .metric-value  { color: var(--accent); }
+    .metric-card.accent2 .metric-value { color: var(--accent2); }
+
+    .metric-sub {
+      font-size: 9px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* PSNR quality bar */
+    .psnr-bar-wrap {
+      margin-top: 5px;
+      height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .psnr-bar {
+      height: 100%;
+      border-radius: 1px;
+      background: linear-gradient(90deg, var(--warn), var(--green));
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    /* ── Download button ── */
+    .btn-download {
+      display: none;
+      width: 100%;
+      padding: 10px;
+      border: 1.5px solid var(--accent);
+      border-radius: 9px;
+      background: transparent;
+      color: var(--accent);
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 10px;
+      animation: fadeIn 0.3s ease both;
+    }
+
+    .btn-download.show { display: block; }
+
+    .btn-download:hover {
+      background: rgba(0,229,255,0.08);
+      box-shadow: var(--glow);
+    }
+
+    /* ── Format tags ── */
+    .formats {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      animation: fadeDown 0.4s 0.2s ease both;
+    }
+
+    .fmt-tag {
+      font-size: 9px;
+      color: var(--muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 2px 7px;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .spinning { display: inline-block; animation: spin 1s linear infinite; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <span class="logo-text">MACS·FC</span>
+    </div>
+    <span class="version">v1.0</span>
+  </header>
+
+  <!-- Mode toggle -->
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btnCompress" onclick="setMode('compress')">COMPRESS</button>
+    <button class="mode-btn"        id="btnDecompress" onclick="setMode('decompress')">DECOMPRESS</button>
+  </div>
+
+  <!-- Drop zone -->
+  <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+    <span class="drop-icon">🗜️</span>
+    <div class="drop-title">Drop your file here</div>
+    <div class="drop-sub">or click to browse<br>
+      <span>.jpg .png .mp4 .wav .mp3 .txt .csv</span>
+    </div>
+  </div>
+  <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.mp4,.wav,.mp3,.txt,.csv" />
+
+  <!-- File pill -->
+  <div class="file-pill" id="filePill">
+    <span class="file-pill-icon" id="fileIcon">📄</span>
+    <div class="file-pill-info">
+      <div class="file-pill-name" id="fileName">—</div>
+      <div class="file-pill-size" id="fileSize">—</div>
+    </div>
+    <button class="file-pill-clear" onclick="clearFile()" title="Remove">✕</button>
+  </div>
+
+  <!-- Quality slider (images) -->
+  <div class="quality-row" id="qualityRow">
+    <span class="quality-label">Quality <span id="qualityVal">75</span></span>
+    <input type="range" id="qualitySlider" min="1" max="100" value="75"
+      oninput="document.getElementById('qualityVal').textContent=this.value;
+               this.style.setProperty('--pct', this.value+'%')" />
+  </div>
+
+  <!-- CRF slider (video) -->
+  <div class="crf-row" id="crfRow">
+    <span class="quality-label">CRF <span id="crfVal">28</span></span>
+    <input type="range" id="crfSlider" min="0" max="51" value="28"
+      style="--pct:55%"
+      oninput="document.getElementById('crfVal').textContent=this.value;
+               this.style.setProperty('--pct', (100 - this.value/51*100)+'%')" />
+  </div>
+
+  <!-- Action button -->
+  <button class="btn-compress" id="btnAction" disabled onclick="handleAction()">
+    SELECT A FILE FIRST
+  </button>
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-label">
+      <span id="progressText">Processing…</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div id="status"></div>
+
+  <!-- Metrics -->
+  <div class="metrics" id="metrics">
+    <div class="metric-card">
+      <div class="metric-label">Original</div>
+      <div class="metric-value" id="originalSize">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Compressed</div>
+      <div class="metric-value" id="compressedSize">—</div>
+    </div>
+    <div class="metric-card accent2">
+      <div class="metric-label">Ratio</div>
+      <div class="metric-value" id="ratio">—</div>
+      <div class="metric-sub">smaller is better</div>
+    </div>
+    <div class="metric-card accent">
+      <div class="metric-label">Space Saved</div>
+      <div class="metric-value" id="savings">—</div>
+    </div>
+    <div class="metric-card" id="psnrCard" style="grid-column: 1/-1; display:none;">
+      <div class="metric-label">PSNR Quality</div>
+      <div class="metric-value" id="psnr">—</div>
+      <div class="metric-sub" id="psnrNote">Peak signal-to-noise ratio</div>
+      <div class="psnr-bar-wrap"><div class="psnr-bar" id="psnrBar"></div></div>
+    </div>
+  </div>
+
+  <!-- Download -->
+  <button class="btn-download" id="btnDownload" onclick="triggerDownload()">
+    ⬇ DOWNLOAD COMPRESSED FILE
+  </button>
+
+  <!-- Format tags -->
+  <div class="formats">
+    <span class="fmt-tag">TXT</span>
+    <span class="fmt-tag">CSV</span>
+    <span class="fmt-tag">PNG</span>
+    <span class="fmt-tag">JPG</span>
+    <span class="fmt-tag">MP3</span>
+    <span class="fmt-tag">WAV</span>
+    <span class="fmt-tag">MP4</span>
+  </div>
+
+</div>
+
+<!-- ── Libraries (order matters) ── -->
+<script src="lib/pako.min.js"></script>
+<script src="lib/upng.min.js"></script>
+<script src="lib/jpeg-js.min.js"></script>
+<script src="lib/lamejs.min.js"></script>
+<script src="lib/ffmpeg.min.js"></script>
+
+<!-- ── Utilities ── -->
+<script src="scripts/utils/file-reader.js"></script>
+<script src="scripts/utils/crypto-hash.js"></script>
+<script src="scripts/utils/metrics.js"></script>
+
+<!-- ── Compressors: lossless ── -->
+<script src="scripts/compressors/lossless/text-gz.js"></script>
+<script src="scripts/compressors/lossless/image-png.js"></script>
+
+<!-- ── Compressors: lossy ── -->
+<script src="scripts/compressors/lossy/audio-mp3.js"></script>
+<script src="scripts/compressors/lossy/image-jpg.js"></script>
+<script src="scripts/compressors/lossy/video-mp4.js"></script>
+
+<!-- ── UI ── -->
+<script src="scripts/ui/dom-handler.js"></script>
+
+<!-- ── Main ── -->
+<script src="popup.js"></script>
+
+<script>
+  /* ── Inline bootstrap (runs after all scripts loaded) ── */
+
+  let currentMode     = 'compress';
+  let selectedFile    = null;
+  let resultBlob      = null;
+  let resultFilename  = '';
+
+  // Preload ffmpeg.wasm immediately
+  if (window.VideoMp4Compressor) VideoMp4Compressor.preload();
+
+  /* ── Mode ── */
+  function setMode(m) {
+    currentMode = m;
+    document.getElementById('btnCompress').classList.toggle('active',   m === 'compress');
+    document.getElementById('btnDecompress').classList.toggle('active', m === 'decompress');
+    const btn = document.getElementById('btnAction');
+    if (selectedFile) {
+      btn.textContent = m === 'compress' ? 'COMPRESS FILE' : 'DECOMPRESS FILE';
+    }
+    resetResults();
+  }
+
+  /* ── File selection ── */
+  document.getElementById('fileInput').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) loadFile(f);
+  });
+
+  // Drag and drop
+  const dz = document.getElementById('dropzone');
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  function loadFile(file) {
+    selectedFile = file;
+    const ext = file.name.split('.').pop().toLowerCase();
+
+    // File pill
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatBytes(file.size);
+    document.getElementById('fileIcon').textContent = getFileIcon(ext);
+    document.getElementById('filePill').classList.add('show');
+
+    // Show relevant controls
+    document.getElementById('qualityRow').classList.toggle('show', ['jpg','jpeg'].includes(ext));
+    document.getElementById('crfRow').classList.toggle('show',     ext === 'mp4');
+
+    // Enable button
+    const btn = document.getElementById('btnAction');
+    btn.disabled = false;
+    btn.textContent = currentMode === 'compress' ? 'COMPRESS FILE' : 'DECOMPRESS FILE';
+
+    resetResults();
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    document.getElementById('filePill').classList.remove('show');
+    document.getElementById('qualityRow').classList.remove('show');
+    document.getElementById('crfRow').classList.remove('show');
+    document.getElementById('fileInput').value = '';
+    const btn = document.getElementById('btnAction');
+    btn.disabled = true;
+    btn.textContent = 'SELECT A FILE FIRST';
+    resetResults();
+  }
+
+  /* ── Main action ── */
+  async function handleAction() {
+    if (!selectedFile) return;
+    const ext = selectedFile.name.split('.').pop().toLowerCase();
+
+    setStatus('', '');
+    resetResults();
+    setBusy(true);
+
+    try {
+      let result;
+
+      if (currentMode === 'compress') {
+        result = await runCompress(ext);
+      } else {
+        result = await runDecompress(ext);
+      }
+
+      if (result) {
+        showMetrics(result, ext);
+        setBusy(false);
+        setStatus('Done! File ready to download.', 'success');
+      }
+
+    } catch (err) {
+      setBusy(false);
+      setStatus('Error: ' + err.message, 'error');
+      console.error(err);
+    }
+  }
+
+  async function runCompress(ext) {
+    let result;
+
+    if (['jpg','jpeg'].includes(ext)) {
+      const q = parseInt(document.getElementById('qualitySlider').value);
+      setStatus('Compressing image…', '');
+      result = await ImageJpgCompressor.compress(selectedFile, { quality: q });
+      resultBlob     = result.compressedBlob;
+      resultFilename = 'compressed.jpg';
+
+    } else if (ext === 'mp4') {
+      const crf = parseInt(document.getElementById('crfSlider').value);
+      setStatus('Loading video encoder…', '');
+      result = await VideoMp4Compressor.compress(selectedFile, {
+        crf,
+        preset: 'fast',
+        onProgress: ({ ratio }) => {
+          const pct = Math.round(ratio * 100);
+          setProgress(pct, `Encoding video…`);
+        }
+      });
+      resultBlob     = result.compressedBlob;
+      resultFilename = 'compressed.mp4';
+
+    } else if (['png'].includes(ext) && window.ImagePngCompressor) {
+      setStatus('Compressing PNG…', '');
+      result = await ImagePngCompressor.compress(selectedFile);
+      resultBlob     = result.compressedBlob;
+      resultFilename = 'compressed.png';
+
+    } else if (['txt','csv'].includes(ext) && window.TextGzCompressor) {
+      setStatus('Compressing text…', '');
+      result = await TextGzCompressor.compress(selectedFile);
+      resultBlob     = result.compressedBlob;
+      resultFilename = selectedFile.name + '.gz';
+
+    } else if (['mp3','wav'].includes(ext) && window.AudioMp3Compressor) {
+      setStatus('Compressing audio…', '');
+      result = await AudioMp3Compressor.compress(selectedFile);
+      resultBlob     = result.compressedBlob;
+      resultFilename = 'compressed.mp3';
+
+    } else {
+      throw new Error(`Unsupported format: .${ext}`);
+    }
+
+    return result;
+  }
+
+  async function runDecompress(ext) {
+    let result;
+
+    if (['jpg','jpeg'].includes(ext)) {
+      setStatus('Reconstructing image…', '');
+      result = await ImageJpgCompressor.decompress(selectedFile);
+      resultBlob     = result.decompressedBlob;
+      resultFilename = 'decompressed.jpg';
+      // Normalise keys for showMetrics
+      result.originalSize   = result.compressedSize;
+      result.compressedSize = result.decompressedSize;
+
+    } else if (ext === 'mp4') {
+      setStatus('Decoding video…', '');
+      result = await VideoMp4Compressor.decompress(selectedFile, {
+        onProgress: ({ ratio }) => setProgress(Math.round(ratio * 100), 'Decoding…')
+      });
+      resultBlob     = result.decompressedBlob;
+      resultFilename = 'decompressed.mp4';
+      result.originalSize   = result.compressedSize;
+      result.compressedSize = result.decompressedSize;
+
+    } else {
+      throw new Error(`Decompression not supported for .${ext} yet`);
+    }
+
+    result.compressionRatio = parseFloat((result.originalSize / result.compressedSize).toFixed(3));
+    result.spaceSavings     = parseFloat(((1 - result.compressedSize / result.originalSize) * 100).toFixed(2));
+    return result;
+  }
+
+  /* ── UI helpers ── */
+  function showMetrics(result, ext) {
+    document.getElementById('originalSize').textContent   = formatBytes(result.originalSize);
+    document.getElementById('compressedSize').textContent = formatBytes(result.compressedSize);
+    document.getElementById('ratio').textContent          = result.compressionRatio + 'x';
+    document.getElementById('savings').textContent        = result.spaceSavings + '%';
+
+    // PSNR
+    const psnrCard = document.getElementById('psnrCard');
+    const lossy = ['jpg','jpeg','mp4','mp3','wav'].includes(ext);
+    if (lossy && result.psnr !== null && result.psnr !== undefined) {
+      psnrCard.style.display = 'block';
+      document.getElementById('psnr').textContent = result.psnr === Infinity ? '∞ dB' : result.psnr + ' dB';
+      // Quality label
+      let note = 'Significant distortion';
+      let pct  = 20;
+      if (result.psnr > 40)      { note = 'Excellent — visually lossless'; pct = 95; }
+      else if (result.psnr > 30) { note = 'Good quality';                   pct = 65; }
+      else if (result.psnr > 20) { note = 'Noticeable degradation';         pct = 35; }
+      document.getElementById('psnrNote').textContent = note;
+      document.getElementById('psnrBar').style.width  = pct + '%';
+    } else {
+      psnrCard.style.display = 'none';
+    }
+
+    document.getElementById('metrics').classList.add('show');
+    document.getElementById('btnDownload').classList.add('show');
+    hideProgress();
+  }
+
+  function triggerDownload() {
+    if (!resultBlob) return;
+    const url = URL.createObjectURL(resultBlob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = resultFilename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function setBusy(busy) {
+    const btn = document.getElementById('btnAction');
+    btn.disabled = busy;
+    if (busy) {
+      btn.innerHTML = '<span class="spinning">⟳</span> PROCESSING…';
+      document.getElementById('progressWrap').classList.add('show');
+    } else {
+      btn.textContent = currentMode === 'compress' ? 'COMPRESS AGAIN' : 'DECOMPRESS AGAIN';
+      hideProgress();
+    }
+  }
+
+  function setProgress(pct, label) {
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = pct + '%';
+    if (label) document.getElementById('progressText').textContent = label;
+  }
+
+  function hideProgress() {
+    document.getElementById('progressWrap').classList.remove('show');
+    setProgress(0, 'Processing…');
+  }
+
+  function setStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent  = msg;
+    el.className    = type || '';
+  }
+
+  function resetResults() {
+    document.getElementById('metrics').classList.remove('show');
+    document.getElementById('btnDownload').classList.remove('show');
+    document.getElementById('psnrCard').style.display = 'none';
+    resultBlob = null;
+    setStatus('', '');
+    hideProgress();
+  }
+
+  function formatBytes(b) {
+    if (!b) return '—';
+    if (b < 1024)          return b + ' B';
+    if (b < 1024 * 1024)   return (b / 1024).toFixed(1) + ' KB';
+    return (b / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function getFileIcon(ext) {
+    const map = { jpg:'🖼️', jpeg:'🖼️', png:'🖼️', mp4:'🎬', mp3:'🎵', wav:'🎵', txt:'📄', csv:'📊' };
+    return map[ext] || '📄';
+  }
+</script>
+</body>
+</html>
