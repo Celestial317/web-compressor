@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "MACS-FC",
+  "name": "MACS-FC: Universal File Compression",
   "version": "1.0.0",
   "description": "Universal File Compressor. Supports lossless and lossy compression for text, images, audio, and video.",
   "action": {
@@ -17,6 +17,11 @@
     "type": "module"
   },
   "permissions": [
-    "unlimitedStorage"
-  ]
+    "storage",
+    "unlimitedStorage",
+    "offscreen"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  }
 }
