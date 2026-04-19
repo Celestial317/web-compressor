@@ -1,5 +1,0 @@
-{
-  "dependencies": {
-    "@ffmpeg/core-st": "^0.11.1"
-  }
-}
