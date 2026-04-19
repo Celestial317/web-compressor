@@ -68,6 +68,8 @@ export async function decompressText(file, expectedHash = null) {
         outputType = 'text/csv';
     } else if (fileName.includes('.pdf')) {
         outputType = 'application/pdf';
+    } else if (fileName.includes('.png')) {
+        outputType = 'image/png';
     }
 
     return {
