@@ -7,6 +7,8 @@
 
 ---
 
+Team Name: Stochastic
+
 ## Overview
 
 **MACS-FC** is a fully browser-native Chrome Extension that compresses and decompresses files of multiple types — text, images, audio, and video — entirely offline, without any server-side processing. The extension supports both **lossless** compression (guaranteeing 100% data-identical rebuilds verified via SHA-256 hashing) and **lossy** compression (discarding perceptually imperceptible data for maximum size reduction). After every operation, it transparently reports performance metrics including compression ratio, space savings percentage, and perceptual quality scores (PSNR / SSIM) for lossy media. The UI is built with a premium dark-themed glassmorphism aesthetic and ensures the interface remains fully responsive even during heavy WebAssembly workloads via a dedicated background Service Worker.
