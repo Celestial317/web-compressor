@@ -61,7 +61,11 @@ document.addEventListener('DOMContentLoaded', () => {
             'application/pdf'
         ];
 
-        if (!allowedTypes.includes(file.type) && !fileName.endsWith('.gz')) {
+        const allowedExtensions = ['txt', 'csv', 'jpg', 'jpeg', 'png', 'mp3', 'wav', 'mp4', 'pdf', 'gz'];
+        const hasSupportedExtension = allowedExtensions.some(ext => fileName.endsWith(`.${ext}`));
+        const hasSupportedType = allowedTypes.includes(file.type);
+
+        if (!hasSupportedType && !hasSupportedExtension) {
             showError("Unsupported format. Please upload TXT, CSV, JPG, PNG, MP3, WAV, MP4, PDF, or GZ.");
             btnCompress.disabled = true;
             btnDecompress.disabled = true;
@@ -151,16 +155,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     showVerification('decompress', null, result.verification);
                 }
             }
-            else if (fileType === 'image/jpeg' || fileType === 'image/jpg') {
+            else if (fileType === 'image/jpeg' || fileType === 'image/jpg' || normalizedName.endsWith('.jpg') || normalizedName.endsWith('.jpeg')) {
                 result = await decompressJPG(currentFile);
             }
-            else if (fileType === 'video/mp4') {
+            else if (fileType === 'video/mp4' || normalizedName.endsWith('.mp4')) {
                 result = await decompressMP4(currentFile);
             }
             else {
                 const readerRes = await FileProcessor.routeDecompression(currentFile);
                 result = {
-                    blob: new Blob([readerRes.data], { type: currentFile.type }),
+                    blob: new Blob([readerRes.data], { type: readerRes.type || currentFile.type || 'application/octet-stream' }),
                     metrics: { originalSize: '--', compressedSize: '--', ratio: 'N/A', savings: 'N/A' }
                 };
             }
@@ -174,6 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
             let downloadName = normalizedName.endsWith('.gz')
                 ? fileName.slice(0, -3)
                 : `decompressed_${fileName}`;
+
+            if (!normalizedName.endsWith('.gz') && fileName.startsWith('compressed_')) {
+                downloadName = fileName.slice('compressed_'.length);
+            }
             setupDownload(processedBlob, downloadName);
 
         } catch (error) {

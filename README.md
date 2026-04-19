@@ -13,6 +13,24 @@
 
 ---
 
+## User Interface
+
+![User Interface](assets/Screenshot%202026-04-19%20232940.png)
+
+---
+
+## Results
+
+| Format | Original Size | Compressed Size | Decompressed Size | Compression Ratio | Saved (%) | PSNR |
+|---|---:|---:|---:|---:|---:|---:|
+| Image (PNG/JPG test) | 441 KB | 238 KB | 922 KB | 1.85:1 | 46.03% | 35.59 dB |
+| Video (MP4) | 456.6 MB | 14.5 MB | 456.6 MB | 31.49:1 | 96.83% | N/A |
+| PDF | 9.57 KB | 6.27 KB | 9.57 KB | 1.53:1 | 34.48% | N/A |
+| MP3 | 7.85 MB | 3.62 MB | 7.85 MB | 2.17:1 | 53.89% | N/A |
+| CSV | 18.15 KB | 3.5 KB | 18.15 KB | 5.19:1 | 80.72% | N/A |
+
+---
+
 ## Team Members
 
 | Team Member | Role | Files Assigned |
@@ -25,6 +43,8 @@
 | **Prakhar** | Background Ops & Architecture | `manifest.json`, `service-worker.js` |
 
 ### Individual Responsibilities
+
+Everyone had a fair distribution of work of approx 16.7%
 
 - **Soumya** — Built the dark-themed glassmorphism UI, wired all DOM event listeners for file input/output interactions, and implemented `lamejs` for in-browser MP3 audio compression.
 - **Aryan Manu** — Implemented spatial redundancy algorithms for lossy JPEG image compression via `jpeg-js` and handled temporal redundancy reduction for video via `ffmpeg.wasm`.

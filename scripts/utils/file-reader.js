@@ -18,9 +18,10 @@ export class FileProcessor {
 
         switch (extension) {
             case 'txt':
+                return { data: buffer, type: 'text/plain', method: 'Pako' };
             case 'csv':
             case 'gz':
-                return { data: buffer, type: 'text', method: 'Pako' };
+                return { data: buffer, type: extension === 'csv' ? 'text/csv' : 'application/gzip', method: 'Pako' };
             case 'png':
                 return { data: buffer, type: 'image/png', method: 'UPNG.js (Pass-through)' };
             case 'pdf':
@@ -29,10 +30,11 @@ export class FileProcessor {
             case 'jpeg':
                 return { data: buffer, type: 'image/jpeg', method: 'JPEG-js' };
             case 'mp3':
+                return { data: buffer, type: 'audio/mpeg', method: 'LameJS (Pass-through)' };
             case 'wav':
-                return { data: buffer, type: 'audio', method: 'LameJS (Pass-through)' };
+                return { data: buffer, type: 'audio/wav', method: 'LameJS (Pass-through)' };
             case 'mp4':
-                return { data: buffer, type: 'video', method: 'FFmpeg' };
+                return { data: buffer, type: 'video/mp4', method: 'FFmpeg' };
             default:
                 throw new Error(`Format (.${extension}) not supported for decompression.`);
         }
